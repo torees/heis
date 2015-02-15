@@ -1,0 +1,12 @@
+//
+//  ElevatorStateMachine.h
+//  Heisprosjekt
+
+
+static int currentFloor;
+static int priorityDirection;
+int fsm_emergencyStop;
+
+void fsm_setEmergencyStop();
+int fsm_getNextInQueue();
+void fsm_setPriorityDirection(int direction);

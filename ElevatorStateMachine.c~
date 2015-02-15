@@ -1,0 +1,111 @@
+
+#include <stdio.h>
+
+#include "ElevatorStateMachine.h"
+#include "elev.h"
+#include "queue.h"
+
+typedef enum{
+    state_idle,
+    state_run,
+    state_doorOpen,
+    state_emergencyStopValidFloor,
+    state_emergencyStopInvalidFloor,
+    state_invalidFloorIdle
+} EState;
+
+static EState g_state = state_idle;
+int fsm_emergencyStop = 0;
+
+
+void fsm_setEmergencyStop(){
+    
+    if (elev_get_stop_signal() != 0) {
+        fsm_emergencyStop = 1;
+        
+        q_deleteQueue();
+        elev_set_motor_direction(0); //sjekk motorDirection int eller enum?
+        
+        switch (g_state) {
+            case state_idle:
+                g_state = state_emergencyStopValidFloor;
+                elev_set_door_open_lamp(1);
+                break;
+                
+            case state_doorOpen:
+                g_state = state_emergencyStopValidFloor;
+                elev_set_door_open_lamp(1);
+                break;
+                
+            case state_run:
+                g_state = state_emergencyStopInvalidFloor;
+                break;
+                
+            default:
+                break;
+        }
+    }
+    
+}
+
+// returnerer -1 ved tom kø
+int fsm_getNextInQueue(){
+    
+    int i;
+    if (g_state == state_doorOpen) {
+        
+        if (priorityDirection==1){
+            
+            for (i=currentFloor+1; i<4; i++) {
+                if ((upQueue[i] != 0) || (elevatorPanelQueue[i] != 0)) {
+                    return i;
+                }
+            }
+            
+            //unntakstilfelle ved endestopp
+            if (downQueue[3] != 0) {
+                return 3;
+            }
+        }
+        
+        else if (priorityDirection == -1){
+            
+            for (i=currentFloor-1; i>-1; i--) {
+                if ((downQueue[i] != 0) || (elevatorPanelQueue[i] != 0)) {
+                    return i;
+                }
+            }
+            
+            //unntakstilfelle ved endestopp
+            if (upQueue[0] != 0) {
+                return 0;
+            }
+        }
+    }
+    
+    else if (g_state == state_idle){
+        for (i=0; i<4; i++) {
+            if ((upQueue[i] != 0) || (elevatorPanelQueue[i] != 0) || (downQueue[i] != 0)) {
+                return i;
+            }
+        }
+    }
+        
+    else {
+    return -1;
+    }
+    
+}
+
+//bruker elev.h-funksjonen inni vår egen funksjon
+void fsm_setPriorityDirection(int direction){
+    elev_set_motor_direction(direction);
+    if (direction != 0) {
+        priorityDirection = direction;
+    }
+    
+    if ((elev_get_floor_sensor_signal()==0 )||(elev_get_floor_sensor_signal()==3)) {
+        priorityDirection = priorityDirection*(-1);
+    }
+}
+
